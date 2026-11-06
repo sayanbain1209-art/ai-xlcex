@@ -14,8 +14,8 @@ st.caption("AI-assisted smart spreadsheet system with Auto-Charts")
 # Initialize grid with clean strings
 if "df" not in st.session_state:
     st.session_state.df = pd.DataFrame(
-        [["" for _ in range(6)] for _ in range(8)],
-        columns=[chr(65 + i) for i in range(6)]
+        [["" for _ in range(26)] for _ in range(15)],
+        columns=[chr(65 + i) for i in range(26)]
     )
 
 # Sidebar: Settings
