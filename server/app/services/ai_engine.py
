@@ -1,15 +1,88 @@
+import os
+import json
+import httpx
 from typing import List, Dict, Any
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+
+SYSTEM_INSTRUCTION = """
+You are the AI engine for 'Ai xlcex', an intelligent spreadsheet system.
+You receive a 2D grid of spreadsheet data and a user instruction in plain English or Bengali.
+Your task:
+1. Interpret the user instruction (e.g., calculate totals, compute averages, clean text, fill series, filter).
+2. Modify or calculate values directly in the 2D grid matrix.
+3. Suggest the Excel formula used if applicable.
+4. Respond ONLY with a valid JSON object matching this schema:
+{
+  "action": "UPDATE_GRID",
+  "updated_data": [[...]],
+  "formula_suggested": "=SUM(A1:A10)",
+  "explanation": "Short summary of what was done"
+}
+Do not wrap response in markdown code fences. Return raw JSON.
+"""
 
 async def process_spreadsheet_command(
     instruction: str, 
     data: List[List[Any]], 
-    selected_range: Dict[str, Any] | None
+    selected_range: Dict[str, Any] | None = None
 ) -> Dict[str, Any]:
-    # AI logic placeholder (Gemini / OpenAI API call goes here)
-    # Sample mock response:
+    if not GEMINI_API_KEY:
+        # Fallback local calculation engine if API key is not yet set
+        return local_fallback_calculator(instruction, data)
+
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+    
+    prompt_payload = {
+        "contents": [{
+            "parts": [{
+                "text": f"{SYSTEM_INSTRUCTION}\n\nUser Instruction: {instruction}\nCurrent Grid Data:\n{json.dumps(data)}"
+            }]
+        }]
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.post(url, json=prompt_payload)
+            resp.raise_for_status()
+            res_json = resp.json()
+            raw_text = res_json['candidates'][0]['content']['parts'][0]['text'].strip()
+            
+            # Clean possible markdown wrap
+            if raw_text.startswith("```"):
+                raw_text = raw_text.split("\n", 1)[-1].rsplit("\n", 1)[0]
+                
+            return json.loads(raw_text)
+    except Exception as e:
+        # Graceful fallback to local processor on failure
+        return local_fallback_calculator(instruction, data)
+
+def local_fallback_calculator(instruction: str, data: List[List[Any]]) -> Dict[str, Any]:
+    lower_inst = instruction.lower()
+    updated = [row[:] for row in data]
+    
+    # Simple smart detection for sum / যোগ
+    if "sum" in lower_inst or "যোগ" in lower_inst or "total" in lower_inst:
+        numbers = []
+        for r in range(len(updated)):
+            for c in range(len(updated[0])):
+                val = str(updated[r][c]).strip()
+                if val.replace(".", "", 1).isdigit():
+                    numbers.append(float(val))
+        
+        total = sum(numbers)
+        # Place total at first empty bottom-left cell
+        updated[len(numbers)][0] = f"Total: {total}"
+        return {
+            "action": "UPDATE_GRID",
+            "updated_data": updated,
+            "formula_suggested": "=SUM(DataRange)",
+            "explanation": f"Calculated total sum: {total}"
+        }
+
     return {
-        "action": "UPDATE_GRID",
-        "updated_data": data,
-        "formula_suggested": "=SUM(A1:A10)",
-        "explanation": f"Processed instruction: '{instruction}'"
+        "action": "NO_CHANGE",
+        "updated_data": updated,
+        "formula_suggested": None,
+        "explanation": f"Processed instruction locally: {instruction}"
     }
