@@ -71,7 +71,7 @@ if st.button("Run AI Prompt"):
                 }
                 
                 headers = {"Content-Type": "application/json"}
-                resp = httpx.post(url, headers=headers, json=payload, timeout=40.0)
+                resp = httpx.post(url, headers=headers, json=payload, timeout=90.0)
                 
                 if resp.status_code != 200:
                     st.error(f"API Error {resp.status_code}: {resp.text}")
