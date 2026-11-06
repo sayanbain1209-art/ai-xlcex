@@ -1,0 +1,15 @@
+from typing import List, Dict, Any
+
+async def process_spreadsheet_command(
+    instruction: str, 
+    data: List[List[Any]], 
+    selected_range: Dict[str, Any] | None
+) -> Dict[str, Any]:
+    # AI logic placeholder (Gemini / OpenAI API call goes here)
+    # Sample mock response:
+    return {
+        "action": "UPDATE_GRID",
+        "updated_data": data,
+        "formula_suggested": "=SUM(A1:A10)",
+        "explanation": f"Processed instruction: '{instruction}'"
+    }
