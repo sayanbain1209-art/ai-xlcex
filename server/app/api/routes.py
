@@ -1,0 +1,29 @@
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+from typing import List, Dict, Any
+from app.services.ai_engine import process_spreadsheet_command
+
+router = APIRouter()
+
+class PromptRequest(BaseModel):
+    instruction: str
+    grid_data: List[List[Any]]
+    selected_range: Dict[str, Any] | None = None
+
+class PromptResponse(BaseModel):
+    action: str
+    updated_data: List[List[Any]]
+    formula_suggested: str | None = None
+    explanation: str
+
+@router.post("/process-prompt", response_model=PromptResponse)
+async def handle_prompt(payload: PromptRequest):
+    try:
+        result = await process_spreadsheet_command(
+            instruction=payload.instruction,
+            data=payload.grid_data,
+            selected_range=payload.selected_range
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
