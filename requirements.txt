@@ -1,3 +1,4 @@
-streamlit
-pandas
-httpx
+fastapi
+uvicorn[standard]
+openpyxl
+python-multipart
